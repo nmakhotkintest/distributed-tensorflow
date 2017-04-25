@@ -10,7 +10,7 @@ image:
   Name: tensorflow/tensorflow
   Tag: latest
 persistence:
-    enabled: true
+    enabled: false
     nfs: {}
     storageClass: standard
     accessMode: ReadWriteMany

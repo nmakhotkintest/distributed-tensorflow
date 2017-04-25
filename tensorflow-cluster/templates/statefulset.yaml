@@ -41,15 +41,17 @@ spec:
             import os;
             import tensorflow as tf;
             hostname = socket.gethostname();
-            pod_num = hostname.split("-")[-1]
+            pod_num = hostname.split("-")[-1];
             pod_num = int(pod_num) if pod_num.isdigit() else 0;
             service_name = '{{ printf "%s-%s" .Release.Name .Chart.Name | trunc 24 }}';
             namespace = os.environ.get('POD_NAMESPACE');
             replicas = int("{{ default 1 .Values.replicas }}");
             pod_dns = "%s.%s.%s.svc.cluster.local" % (hostname, service_name, namespace);
-            port_begins = 2222;
-            cluster_spec = ["%s:%s" % (pod_dns, port_begins + p) for p in range(0, replicas)];
+            port = 2222;
+            cluster_spec = ["%s:%s" % (pod_dns, port) for _ in range(0, replicas)];
+            print('Cluster = %s...' % cluster_spec);
             cluster = tf.train.ClusterSpec({"local": cluster_spec});
+            print('Start for task index = %s...' % pod_num);
             server = tf.train.Server(cluster, job_name="local", task_index=pod_num);
             server.join()
         #ports:
