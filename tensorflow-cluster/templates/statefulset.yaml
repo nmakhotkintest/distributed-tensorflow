@@ -50,7 +50,7 @@ spec:
             port_begins = 2222;
             cluster_spec = ["%s:%s" % (pod_dns, port_begins + p) for p in range(0, replicas)];
             cluster = tf.train.ClusterSpec({"local": cluster_spec});
-            server = tf.train.Server(cluster, job_name="local", task_index=pod_num)
+            server = tf.train.Server(cluster, job_name="local", task_index=pod_num);
             server.join()
         #ports:
         #- containerPort: 8888
