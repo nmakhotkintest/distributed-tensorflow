@@ -1,0 +1,68 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: "{{ printf "%s-%s" .Release.Name .Chart.Name | trunc 24 }}"
+  labels:
+    heritage: {{.Release.Service | quote }}
+    release: {{.Release.Name | quote }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    helm.sh/created: {{.Release.Time.Seconds | quote }}
+spec:
+  serviceName: "{{ printf "%s-%s" .Release.Name .Chart.Name | trunc 24 }}"
+  replicas: {{ default 1 .Values.replicas }}
+  template:
+    metadata:
+      labels:
+        heritage: {{ .Release.Service | quote }}
+        release: {{ .Release.Name | quote }}
+        chart: {{ .Chart.Name }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: tensorflow-distributed
+        resources:
+          requests:
+            cpu: "{{ .Values.cpu.requests }}"
+            memory: "{{ .Values.memory.requests }}"
+          limits:
+            cpu: "{{ .Values.cpu.limits }}"
+            memory: "{{ .Values.memory.limits }}"
+        image: "{{ printf "%s:%s" .Values.image.Name .Values.image.Tag }}"
+        command: ["/usr/bin/python", "-c"]
+        env:
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        args:
+          - >
+            import socket;
+            import os;
+            import tensorflow as tf;
+            hostname = socket.gethostname();
+            pod_num = hostname.split("-")[-1]
+            pod_num = int(pod_num) if pod_num.isdigit() else 0;
+            service_name = '{{ printf "%s-%s" .Release.Name .Chart.Name | trunc 24 }}';
+            namespace = os.environ.get('POD_NAMESPACE');
+            replicas = int("{{ default 1 .Values.replicas }}");
+            pod_dns = "%s.%s.%s.svc.cluster.local" % (hostname, service_name, namespace);
+            port_begins = 2222;
+            cluster_spec = ["%s:%s" % (pod_dns, port_begins + p) for p in range(0, replicas)];
+            cluster = tf.train.ClusterSpec({"local": cluster_spec});
+            server = tf.train.Server(cluster, job_name="local", task_index=pod_num)
+            server.join()
+        #ports:
+        #- containerPort: 8888
+        #  name: tensorflow
+        volumeMounts:
+        - name: notebooks
+          mountPath: "/notebooks"
+      volumes:
+        - name: notebooks
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: "{{ printf "%s-%s" .Release.Name .Chart.Name | trunc 24 }}"
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

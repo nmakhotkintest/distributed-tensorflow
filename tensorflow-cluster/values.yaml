@@ -1,0 +1,17 @@
+replicas: 2
+cpu:
+  requests: "100m"
+  limits: "8000m"
+memory:
+  requests: "64Mi"
+  limits: "16Gi"
+serviceType: ClusterIP
+image:
+  Name: tensorflow/tensorflow
+  Tag: latest
+persistence:
+    enabled: true
+    nfs: {}
+    storageClass: standard
+    accessMode: ReadWriteMany
+    size: 16Gi
